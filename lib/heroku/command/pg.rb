@@ -31,7 +31,7 @@ module Heroku::Command
       deprecate_dash_dash_db("pg:ingress")
       uri = generate_ingress_uri
       display "Connection info string:"
-      display "   \"dbname=#{uri.path[1..-1]} host=#{uri.host} port=#{uri.port} user=#{uri.user} password=#{uri.password} sslmode=require\""
+      display "   \"dbname=#{uri.path[1..-1]} host=#{uri.host} port=#{uri.port || 5432} user=#{uri.user} password=#{uri.password} sslmode=require\""
     end
 
     # pg:promote <DATABASE>
@@ -57,7 +57,7 @@ module Heroku::Command
     #
     def psql
       deprecate_dash_dash_db("pg:psql")
-      uri = generate_ingress_uri("Connecting")
+      uri = generate_ingress_uri("-----> Connecting")
       ENV["PGPASSWORD"] = uri.password
       ENV["PGSSLMODE"]  = 'require'
       begin
@@ -76,25 +76,14 @@ module Heroku::Command
       deprecate_dash_dash_db("pg:reset")
       db = resolve_db(:required => 'pg:reset')
 
-      display "Resetting #{db[:pretty_name]}"
+      display "-----> Resetting #{db[:pretty_name]}"
       return unless confirm_command
 
       working_display 'Resetting' do
         case db[:name]
-        when Resolver.shared_addon_prefix
-          display " getting new database credentials...", false
+        when /\A#{Resolver.shared_addon_prefix}\w+/
+          display " database, related tables and functions...", false
           response = heroku_shared_postgresql_client(db[:url]).reset_database
-          detected_app = app
-          heroku.add_config_vars(detected_app, response)
-          heroku.add_config_vars(detected_app, {"DATABASE_URL" => response['url']}) if db[:default]
-          display " done", false
-
-          begin
-            release = heroku.releases(detected_app).last
-            display(", #{release["name"]}", false) if release
-          rescue RestClient::RequestFailed => e
-          end
-          display "."
         when "SHARED_DATABASE"
           heroku.database_reset(app)
         else
@@ -172,7 +161,16 @@ module Heroku::Command
     # defaults to all databases if no DATABASE is specified
     #
     def wait
-      specified_db_or_all { |db| wait_for db }
+      specified_db_or_all do |db|
+        case db[:name]
+        when 'SHARED_DATABASE'
+          return
+        when /\A#{Resolver.shared_addon_prefix}\w+/
+          return
+        else
+          wait_for db
+        end
+      end
     end
 
 private
@@ -192,8 +190,6 @@ private
     end
 
     def wait_for(db)
-      return if ["SHARED_DATABASE", Resolver.shared_addon_prefix].include? db[:name]
-
       ticking do |ticks|
         wait_status = heroku_postgresql_client(db[:url]).get_wait_status
         break if !wait_status[:waiting?] && ticks == 0
@@ -211,7 +207,7 @@ private
       case db[:name]
       when "SHARED_DATABASE"
         display_info_shared
-      when Resolver.shared_addon_prefix
+      when /\A#{Resolver.shared_addon_prefix}\w+/
         display_info_shared_postgresql(db)
       else
         display_info_dedicated(db)
@@ -247,18 +243,22 @@ private
       end
     end
 
-    def generate_ingress_uri(action)
+    def generate_ingress_uri(action=nil)
       db = resolve_db(:allow_default => true)
       case db[:name]
       when "SHARED_DATABASE"
         error "Cannot ingress to a shared database" if "SHARED_DATABASE" == db[:name]
-      when Resolver.shared_addon_prefix
-        working_display("#{action} to #{db[:name]}")
+      when /\A#{Resolver.shared_addon_prefix}\w+/
+        working_display("#{action} to #{db[:name]}") if action
         return URI.parse(db[:url])
       else
         hpc = heroku_postgresql_client(db[:url])
         error "The database is not available for ingress" unless hpc.get_database[:available_for_ingress]
-        working_display("#{action} to #{db[:name]}") { hpc.ingress }
+        if action
+          working_display("#{action} to #{db[:name]}") { hpc.ingress }
+        else
+          hpc.ingress
+        end
         return URI.parse(db[:url])
       end
     end
