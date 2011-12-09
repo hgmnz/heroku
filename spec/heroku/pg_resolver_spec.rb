@@ -56,8 +56,8 @@ describe Resolver do
       r.message.should_not be
     end
 
-    it 'reutrns the yobuko url when asked for HEROKU_SHARED_POSTGRESQL' do
-      r = Resolver.new("HEROKU_SHARED_POSTGRESQL", config)
+    it 'returns the yobuko url when asked for HEROKU_SHARED_POSTGRESQL' do
+      r = Resolver.new("HEROKU_SHARED_POSTGRESQL_BLACK", config)
       r.url.should == 'postgres://yobuko'
       r.message.should_not be
     end
@@ -119,14 +119,14 @@ describe Resolver do
     end
 
     it 'is able to get the yobuko config var' do
-      r = Resolver.new('HEROKU_SHARED_POSTGRESQL', config)
+      r = Resolver.new('HEROKU_SHARED_POSTGRESQL_BLACK', config)
       r.url.should == 'postgres://yobuko'
     end
 
     it 'returns all with Resolver.all' do
       Resolver.all(config).should =~ [
         {:name => 'SHARED_DATABASE',              :pretty_name => 'SHARED_DATABASE',                      :url => 'postgres://shared', :default => false},
-        {:name => 'HEROKU_SHARED_POSTGRESQL',     :pretty_name => 'HEROKU_SHARED_POSTGRESQL',             :url => 'postgres://yobuko', :default => false},
+        {:name => 'HEROKU_SHARED_POSTGRESQL_BLACK',:pretty_name =>'HEROKU_SHARED_POSTGRESQL_BLACK',      :url => 'postgres://yobuko', :default => false},
         {:name => 'HEROKU_POSTGRESQL_PERIWINKLE', :pretty_name => 'HEROKU_POSTGRESQL_PERIWINKLE',         :url => 'postgres://pari',   :default => false},
         {:name => 'HEROKU_POSTGRESQL_RED',        :pretty_name => 'HEROKU_POSTGRESQL_RED (DATABASE_URL)', :url => 'postgres://red',    :default => true}
       ]

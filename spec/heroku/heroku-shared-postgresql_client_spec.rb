@@ -4,7 +4,7 @@ require "heroku-shared-postgresql/client"
 require 'digest'
 
 def yobuko_path(path)
-  "https://yobuko-production.herokuapp.com/client/#{path}"
+  "https://heroku-shared-production.herokuapp.com/client/#{path}"
 end
 
 def hk_pg_api_stub(method, path)
