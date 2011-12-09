@@ -92,37 +92,6 @@ module Heroku::Command
       end
     end
 
-    # pg:reset_password <DATABASE>
-    #
-    # Reset the password on the database
-    #
-    def reset_password
-      db = resolve_db
-      display "Resetting password on #{db[:pretty_name]}"
-      return unless confirm_command
-      working_display 'Resetting password' do
-        case db[:name]
-        when "SHARED_DATABASE"
-          output_with_bang "Resetting password is not supported on SHARED_DATABASE"
-        when Resolver.shared_addon_prefix
-          response = heroku_shared_postgresql_client(db[:url]).reset_password
-          detected_app = app
-          display "Setting new password...", false
-          heroku.add_config_vars(detected_app, response)
-          heroku.add_config_vars(detected_app, {"DATABASE_URL" => response['url']}) if db[:default]
-          display " done", false
-          begin
-            release = heroku.releases(detected_app).last
-            display(", #{release["name"]}", false) if release
-          rescue RestClient::RequestFailed => e
-          end
-          display "."
-        else
-          error "Resetting password is not yet supported on #{db[:name]}"
-        end
-      end
-    end
-
     # pg:unfollow <REPLICA>
     #
     # stop a replica from following and make it a read/write database
