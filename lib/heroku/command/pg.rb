@@ -27,6 +27,8 @@ module Heroku::Command
     def promote
       deprecate_dash_dash_db("pg:promote")
       follower_db = resolve_db(:required => 'pg:promote')
+      puts "*"*80
+      puts follower_db[:name]
       error("DATABASE_URL is already set to #{follower_db[:name]}") if follower_db[:default]
 
       working_display "-----> Promoting #{follower_db[:name]} to DATABASE_URL" do
@@ -142,19 +144,19 @@ module Heroku::Command
     def credentials
       deprecate_dash_dash_db("pg:ingress")
       reset = extract_option("--reset", false)
-      case reset
-      when true
-        db = resolve_db(:required => 'pg:reset')
-        case db[:name]
-        when /\A#{Resolver.shared_addon_prefix}\w+/
-          working_display 'Resetting' do
-            return unless confirm_command
-            output_with_arrow("Resetting password for #{db[:pretty_name]}")
+      db = resolve_db(:required => 'pg:reset')
+      if reset
+        working_display 'Resetting' do
+          response = nil
+          return unless confirm_command
+          output_with_arrow("Resetting password for #{db[:pretty_name]}")
+          case db[:name]
+          when /\A#{Resolver.shared_addon_prefix}\w+/
             response = heroku_shared_postgresql_client(db[:url]).reset_password
-            heroku.add_config_vars(app, {"DATABASE_URL" => response["url"]}) if db[:default]
+          else
+            response = heroku_postgresql_client(db[:url]).rotate_credentials
           end
-        else
-          output_with_bang "Resetting password not currently supported for #{db[:pretty_name]}"
+          heroku.add_config_vars(app, {"DATABASE_URL" => response["url"]}) if db[:default]
         end
       else
         uri = generate_ingress_uri

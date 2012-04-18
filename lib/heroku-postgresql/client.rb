@@ -36,6 +36,10 @@ module HerokuPostgresql
       http_put "#{@database_sha}/unfollow"
     end
 
+    def rotate_credentials
+      http_post "#{@database_sha}/credentials_rotation"
+    end
+
     protected
 
     def sha(url)
