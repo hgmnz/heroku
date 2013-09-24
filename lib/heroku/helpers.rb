@@ -192,6 +192,8 @@ module Heroku
 
     def json_decode(json)
       MultiJson.parse(json)
+    rescue MultiJson::LoadError
+      nil
     end
 
     def set_buffer(enable)
