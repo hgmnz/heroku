@@ -134,7 +134,7 @@ end
 def poll_ci
   require("multi_json")
   require("net/http")
-  data = MultiJson.parse(Net::HTTP.get("travis-ci.org", "/heroku/heroku.json"))
+  data = MultiJson.load(Net::HTTP.get("travis-ci.org", "/heroku/heroku.json"))
   case data["last_build_status"]
   when nil
     print(".")
